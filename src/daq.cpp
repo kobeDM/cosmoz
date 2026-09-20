@@ -210,6 +210,7 @@ static uint64_t capTime64;
 static uint32_t elapsedTime;
 static double   liveRate[nChMax] = {}; // ch毎の livetime ratio
 static uint32_t nEvent;
+static uint32_t nTrig;
 static uint64_t nEventCh[nChMax] = {}; // ch毎のイベント記録数
 static uint64_t startTimeFPGA;
 static uint64_t elapsedTimeFPGA;
@@ -486,6 +487,7 @@ int main(int argc, char *argv[])
       //elapsedTime = capTime * 1000; // s -> ms に変換
       elapsedTime = 0; // ms
       nEvent = 0;
+      nTrig = 0;
       if (ofp) {
          fwrite(&timeStampExt,  sizeof(double),   1, ofp);   // 外部からのタイムスタンプ (Unix time)
          fwrite(&startTime,     4,                1, ofp);   // キャプチャ開始時間 (Unix time)
@@ -581,10 +583,12 @@ int main(int argc, char *argv[])
                if (csz_adc_getfreq() == 125) t_rate *= 1.25 * 1.03;
                double e_rate = 1. * (nEventCh[ch - 1] / (elapsedTimeFPGA * 1.0e-8));       // イベントレート
                liveRate[ch - 1] = e_rate / t_rate;
+               nTrig += static_cast< uint32_t >( t_rate * (elapsedTimeFPGA * 1.0e-8) );
 
                std::cout << "\nLivetime ratio ("<< ch <<") : " << liveRate[ch - 1] << "\n"
                   << "	Trigger Rate (/s) = " << t_rate << "\n"
-                  << "	Event Rate (/s) = " << e_rate << "\n";
+                  << "	Event Rate (/s) = " << e_rate << "\n"
+                  << "	Num Trigger = " << t_rate * (elapsedTimeFPGA * 1.0e-8) << "\n";
             }
          }
 
@@ -622,10 +626,12 @@ int main(int argc, char *argv[])
                if (csz_adc_getfreq() == 125) t_rate *= 1.25 * 1.03;
                double e_rate = 1. * (nEventCh[ch - 1] / (elapsedTimeFPGA * 1.0e-8));       // イベントレート
                liveRate[ch - 1] = e_rate / t_rate;
-
+               nTrig += static_cast< uint32_t >( t_rate * (elapsedTimeFPGA * 1.0e-8) );
+               
                std::cout << "\nLivetime ratio ("<< ch <<") : " << liveRate[ch - 1] << "\n"
                   << "	Trigger Rate (/s) = " << t_rate << "\n"
-                  << "	Event Rate (/s) = " << e_rate << "\n";
+                  << "	Event Rate (/s) = " << e_rate << "\n"
+                  << "	Num Trigger = " << t_rate * (elapsedTimeFPGA * 1.0e-8) << "\n";
             }
          }
 
@@ -644,9 +650,23 @@ int main(int argc, char *argv[])
       }
 
       csz_close();
+
+      uint64_t livetime = static_cast< uint64_t >( elapsedTime * ( static_cast< double >( nTrig ) / static_cast< double >( nEvent ) ) );
+      cout << "Elapsed time = " << elapsedTime << endl;
       cout << "NEvent = " << nEvent << endl;
+      cout << "NTrig = " << nTrig << endl;
+      cout << "Livetime = " << livetime << endl;
       cout << "Cosmo-Z closed." << endl;
 
+      FILE* finfo;
+      string infoFile = header +  tools::itos(wavelength) + ".info";
+      finfo = fopen( infoFile.c_str( ), "w" );
+      fprintf( finfo, "ElapsedTime:\t%u\n", elapsedTime );
+      fprintf( finfo, "NumEvent:\t%u\n", nEvent );
+      fprintf( finfo, "NumTrig:\t%u\n", nTrig );
+      fprintf( finfo, "LiveTime:\t%llu\n", livetime );
+      fclose( finfo );
+      
       if (analysis) {
          string fileAnly = header + "_anly.dat";
          FILE *ofp2 = fopen(fileAnly.c_str(), "ab+");
