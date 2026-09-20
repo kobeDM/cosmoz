@@ -665,6 +665,7 @@ int main(int argc, char *argv[])
       fprintf( finfo, "NumEvent:\t%u\n", nEvent );
       fprintf( finfo, "NumTrig:\t%u\n", nTrig );
       fprintf( finfo, "LiveTime:\t%llu\n", livetime );
+      fprintf( finfo, "CapLength:\t%u\n", capLength );
       fclose( finfo );
       
       if (analysis) {
