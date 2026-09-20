@@ -70,3 +70,9 @@ Testing/
 
 #cosmoz
 *.elf
+
+#python
+*__pycache__
+
+#emacs
+*~
