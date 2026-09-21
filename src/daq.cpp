@@ -464,7 +464,8 @@ int main(int argc, char *argv[])
       cout << "Driver   : version = " << csz_driver_version() << endl;
       cout << "-----------------------------------\n" << endl;
 
-      cout << "Sampling Frequency : " << csz_adc_getfreq() << " MSPS\n";
+      int frequency = csz_adc_getfreq();
+      cout << "Sampling Frequency : " << frequency << " MSPS\n";
       cout << "Trigger Channels : \n";
       for (uint16_t ic=0; ic<maxCH; ic++) {
          cout << "\tCh" << ic+1 << " : " << csz_trig_tostr(csz_trig_gettype(ic+1)) << " " << csz_trig_getadcval(ic+1) << endl;
@@ -522,6 +523,13 @@ int main(int argc, char *argv[])
          std::thread trigThread(monitorTriggerRate, &trigMon, std::cref(chs));
 
          elapsedTimeFPGA = 0;
+
+         std::cout << std::endl;         
+         std::cout << std::endl;         
+         std::cout << "=====                                 =====" << std::endl;
+         std::cout << "===== -COSMOZ- START EVENT CAPTURE... =====" << std::endl;
+         std::cout << "=====                                 =====" << std::endl;
+         std::cout << std::endl;         
          while (elapsedTimeFPGA < capTime64) {
             capState = csz_capture_status();
 
@@ -544,13 +552,17 @@ int main(int argc, char *argv[])
                      }
                   }
                   nEvent++;
+                  if( nEvent % 10 == 0 ) 
+                      
+                      std::cout << "\rElapsed time: " << timeStamp / 100000000 << " sec. \tEvent: " << nEvent << "         " << std::flush;
                }
             }
             elapsedTimeFPGA = csz_time48() - startTimeFPGA;
           //if (is_crtlc_pushed()) { cerr << "Aborted.\n";  break; }
             if (g_status == 1) throw tools::exception("main", "Capture(Oscilloscope Mode) Aborted.");
          }
-
+         std::cout << std::endl;
+         
          elapsedTimeFPGA = csz_time48() - startTimeFPGA;
          elapsedTime = (uint32_t)(elapsedTimeFPGA * 0.00001); // 10ns単位 -> ms に変換
 
@@ -580,7 +592,7 @@ int main(int argc, char *argv[])
             if (trigMon.nRate[ch - 1] > 0 && trigMon.triggerRate[ch - 1] > 0) {
                double t_rate = 1. * (trigMon.triggerRate[ch - 1] / trigMon.nRate[ch - 1]); // トリガーレート
                // 125 MSPSだけ時間の扱いが異なるよう(/s ではなく /0.8s)なので補正をかける（それでも若干少ないので、さらに1.03倍している）
-               if (csz_adc_getfreq() == 125) t_rate *= 1.25 * 1.03;
+               if (frequency == 125) t_rate *= 1.25 * 1.03;
                double e_rate = 1. * (nEventCh[ch - 1] / (elapsedTimeFPGA * 1.0e-8));       // イベントレート
                liveRate[ch - 1] = e_rate / t_rate;
                nTrig += static_cast< uint32_t >( t_rate * (elapsedTimeFPGA * 1.0e-8) );
@@ -623,7 +635,7 @@ int main(int argc, char *argv[])
             if (trigMon.nRate[ch - 1] > 0 && trigMon.triggerRate[ch - 1] > 0) {
                double t_rate = 1. * (trigMon.triggerRate[ch - 1] / trigMon.nRate[ch - 1]); // トリガーレート
                // 125 MSPSだけ時間の扱いが異なるよう(/s ではなく /0.8s)なので補正をかける（それでも若干少ないので、さらに1.03倍している）
-               if (csz_adc_getfreq() == 125) t_rate *= 1.25 * 1.03;
+               if (frequency == 125) t_rate *= 1.25 * 1.03;
                double e_rate = 1. * (nEventCh[ch - 1] / (elapsedTimeFPGA * 1.0e-8));       // イベントレート
                liveRate[ch - 1] = e_rate / t_rate;
                nTrig += static_cast< uint32_t >( t_rate * (elapsedTimeFPGA * 1.0e-8) );
@@ -666,7 +678,7 @@ int main(int argc, char *argv[])
       fprintf( finfo, "NumTrig:\t%u\n", nTrig );
       fprintf( finfo, "LiveTime:\t%llu\n", livetime );
       fprintf( finfo, "CapLength:\t%u\n", capLength );
-      fprintf( finfo, "SampleFreq:\t%u\n", csz_adc_getfreq() );
+      fprintf( finfo, "SampleFreq:\t%u\n", frequency );
       fclose( finfo );
       
       if (analysis) {
