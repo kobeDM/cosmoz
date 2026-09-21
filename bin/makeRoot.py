@@ -10,31 +10,34 @@ import ROOT
 
 def main( ):
     parser = argparse.ArgumentParser( )
-    # parser.add_argument( "-h", help = "file header", default = "AISTPIX" )
+    parser.add_argument( "-n", help = "file header", default = "AISTPIX" )
     parser.add_argument( "-p", help = "period number", default = 0 )
     parser.add_argument( "-f", help = "file ID", default = 0 )
     args = parser.parse_args( )
 
-    header = "AISTPIX"
-
-    realtime = np.empty( (1), dtype=np.int32 )
-    numEvent = np.empty( (1), dtype=np.int32 )
-    numTrig  = np.empty( (1), dtype=np.int32 )
-    livetime = np.empty( (1), dtype=np.int32 )
-    capLength = np.empty( (1), dtype=np.int32 )
-    # pedestal = np.empty( (1), dtype=np.uint32 )
-
+    header = args.n
     pername = "per"+str( args.p ).zfill( 4 )
     root_path = f"{pername}/{header}_{args.f}.root"
     root_file = ROOT.TFile( root_path, "RECREATE" )
     tree = ROOT.TTree( "tree", "tree" );
-    tree.Branch( "realtime", realtime, "raltime/I" )
-    tree.Branch( "numEvent", numEvent, "numEvent/I" )
-    tree.Branch( "numTrig",  numTrig, "numTrig/I"  )
-    tree.Branch( "livetime", livetime, "livetime/I" )
+
+    realtime  = np.empty( (1), dtype=np.int32 )
+    numEvent  = np.empty( (1), dtype=np.int32 )
+    numTrig   = np.empty( (1), dtype=np.int32 )
+    livetime  = np.empty( (1), dtype=np.int32 )
+    capLength = np.empty( (1), dtype=np.int32 )
+    pedestal1 = np.empty( (1), dtype=np.int32 )
+    pedestal2 = np.empty( (1), dtype=np.int32 )
+    frequency = np.empty( (1), dtype=np.int32 )
+
+    tree.Branch( "realtime",  realtime,  "raltime/I"   )
+    tree.Branch( "numEvent",  numEvent,  "numEvent/I"  )
+    tree.Branch( "numTrig",   numTrig,   "numTrig/I"   )
+    tree.Branch( "livetime",  livetime,  "livetime/I"  )
     tree.Branch( "capLength", capLength, "capLength/I" )
-    # tree.Branch( "pedestal", pedestal, "pedestal/D" )
-    
+    tree.Branch( "frequency", frequency, "frequency/I"  )
+    tree.Branch( "pedestal1", pedestal1, "pedestal1/I"  )
+    tree.Branch( "pedestal2", pedestal2, "pedestal2/I"  )
 
     info_path = f"{pername}/{header}_{args.f}.info"
     with open( info_path, "r" ) as info_open:
@@ -49,6 +52,8 @@ def main( ):
                 livetime[0] = int(line.split("\t")[1])
             elif "CapLength:" in line:
                 capLength[0] = int(line.split("\t")[1])
+            elif "SampleFreq:" in line:
+                frequency[0] = int(line.split("\t")[1])
                 
     buf1 = np.empty( capLength[0], dtype=np.uint16 )
     buf2 = np.empty( capLength[0], dtype=np.uint16 )
@@ -57,33 +62,20 @@ def main( ):
 
     wave_path = f"{pername}/{header}_{args.f}.wave"
     with CZData( wave_path ) as data:
-        # data.print_header()
         while True:
             ev = data.read()
-            if ev is None:
-                break
+            if ev is None: break
 
-            # print(f"time: {ev.time_sec():.8f} s")
-
-            if data.capMode == 0:
-                # Capture mode 
+            if data.capMode == 0: # Capture mode 
                 for idx, ch in enumerate( ev.ch ):
                     if ch == 1:
                         buf1[:] = np.asarray(ev.wf[idx],dtype=np.uint16)
+                        pedestal1[0] = ev.ped[idx]
                     if ch == 2:
                         buf2[:] = np.asarray(ev.wf[idx],dtype=np.uint16)
-
-                    # pedestal = double(ev.ped[idx])
-                tree.Fill( )
+                        pedestal2[0] = ev.ped[idx]
                     
-            # elif data.capMode == 1:
-            #     # Event mode
-            #     ich = data.activeChannel.index(ev.ch)
-            #     wf = np.asarray(ev.wf[ich])
-
-            #     print("channel: ", ev.ch)
-            #     print("pedestal: ", ev.ped[ich])
-            #     print("waveform: ", wf)
+                tree.Fill( )
 
     tree.Write( )
     root_file.Close( )
