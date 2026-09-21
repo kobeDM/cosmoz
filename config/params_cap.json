@@ -1,23 +1,23 @@
 [
   {
     "Reset": true,
-    "Frequency": 125,
+    "Frequency": 4,
     "Ch1": {
       "Type": "rise",
-      "ADC":2050 
+      "ADC":2400 
     },
-    "Ch8": {
-      "Type": "upper",
-      "ADC":2050 
+    "Ch2": {
+      "Type": "rise",
+      "ADC":2350 
     },
-    "OrTrig": false,
-    "PreTrig": 10,
+    "OrTrig": true,
+    "PreTrig": 254,
     "PostTrigFixed": false,
     "TimeOut": 1.0,
     "Capture": {
       "Mode": 0,
-      "Time": 10,
-      "Length": 256
+      "Time": 3,
+      "Length": 512
     },
     "SaveWaveform": true
   }
