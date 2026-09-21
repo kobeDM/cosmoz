@@ -666,6 +666,7 @@ int main(int argc, char *argv[])
       fprintf( finfo, "NumTrig:\t%u\n", nTrig );
       fprintf( finfo, "LiveTime:\t%llu\n", livetime );
       fprintf( finfo, "CapLength:\t%u\n", capLength );
+      fprintf( finfo, "SampleFreq:\t%u\n", csz_adc_getfreq() );
       fclose( finfo );
       
       if (analysis) {
